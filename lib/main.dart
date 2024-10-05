@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
 
-// TODO: add rating-difference
 // TODO: save player info to device
 // TODO: prettify
 // TODO: automatic update on PDGA ratings update (possibly with notification)
@@ -84,10 +83,11 @@ class Player {
   int pdgaNumber;
   String name;
   int? rating;
+  int? ratingDifference;
   DateTime? ratingDate;
   Uri url;
 
-  Player(this.pdgaNumber, this.name, this.rating, this.ratingDate, this.url);
+  Player(this.pdgaNumber, this.name, this.rating, this.ratingDifference, this.ratingDate, this.url);
 
   String getDisplayDate() {
     final value = ratingDate;
@@ -105,6 +105,21 @@ class Player {
     } else {
       return rating.toString();
     }
+  }
+
+  Row getRatingDisplayWidget() {
+    final ratingVal = rating;
+    final ratingDifferenceVal = ratingDifference;
+    if (ratingVal == null || ratingDifferenceVal == null) {
+      return Row(children: [Text(getDisplayRating())],);
+    }
+    if (ratingDifferenceVal != null && ratingDifferenceVal < 0) {
+      return Row(children: [Text(getDisplayRating()), const Icon(Icons.arrow_downward_rounded), Text(ratingDifferenceVal.toString())],);
+    }
+    if (ratingDifferenceVal != null && ratingDifferenceVal > 0) {
+      return Row(children: [Text(getDisplayRating()), const Icon(Icons.arrow_upward_rounded), Text(ratingDifferenceVal.toString())],);
+    }
+    throw Exception("Rating difference value cannot be zero");
   }
 }
 
@@ -137,6 +152,16 @@ int? getPlayerRating(String responseBody) {
   String split_4 = split_3.split("<")[0];
   String rating = split_4.replaceAll(RegExp(r"\s+"), "");
   return int.parse(rating);
+}
+
+int? getPlayerRatingDifference(String responseBody) {
+  if (!responseBody.contains("rating-difference")) {
+    return null;
+  }
+  String split_1 = responseBody.split("rating-difference")[1];
+  String split_2 = split_1.split("</a>")[0];
+  String ratingDifference = split_2.split(">")[1];
+  return int.parse(ratingDifference);
 }
 
 DateTime? getPlayerRatingDate(String responseBody) {
@@ -205,10 +230,11 @@ class _MyHomePageState extends State<MyHomePage> {
         }
 
         int? rating = getPlayerRating(responseBody);
+        int? ratingDifference = getPlayerRatingDifference(responseBody);
         String name = getPlayerName(responseBody);
         DateTime? ratingDate = getPlayerRatingDate(responseBody);
         Uri url = getPlayerUrl(pdgaNumber);
-        Player player = Player(pdgaNumber, name, rating, ratingDate, url);
+        Player player = Player(pdgaNumber, name, rating, ratingDifference, ratingDate, url);
         players.add(player);
       });
     });
@@ -225,8 +251,10 @@ class _MyHomePageState extends State<MyHomePage> {
       getPlayerData(player.pdgaNumber).then((responseBody) {
         setState(() {
           int? rating = getPlayerRating(responseBody);
+          int? ratingDifference = getPlayerRatingDifference(responseBody);
           DateTime? ratingDate = getPlayerRatingDate(responseBody);
           player.rating = rating;
+          player.ratingDifference = ratingDifference;
           player.ratingDate = ratingDate;
         });
       });
@@ -353,7 +381,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             onTap: () => launchUrl(player.url),
                           )
                         ),
-                        DataCell(Text(player.getDisplayRating())),
+                        DataCell(player.getRatingDisplayWidget()),
                         DataCell(Text(player.getDisplayDate())),
                         DataCell(
                           IconButton(
