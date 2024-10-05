@@ -1,17 +1,31 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:convert';
 
-// TODO: save player info to device
 // TODO: prettify
 // TODO: automatic update on PDGA ratings update (possibly with notification)
 // TODO: deploy to app store (see https://medium.com/@magnigeeks3/deploying-flutter-apps-to-app-stores-a-step-by-step-guide-00dab049bea0)
 
 void main() {
   runApp(const MyApp());
+}
+
+Future<String> get _localPath async {
+  final directory = await getApplicationDocumentsDirectory();
+  return directory.path;
+}
+
+Future<File> get _localFile async {
+  final path = await _localPath;
+  return File('$path/players.json');
 }
 
 class MyApp extends StatelessWidget {
@@ -38,7 +52,7 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.lightBlue),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'PDGA Player Ratings'),
@@ -89,6 +103,45 @@ class Player {
 
   Player(this.pdgaNumber, this.name, this.rating, this.ratingDifference, this.ratingDate, this.url);
 
+  factory Player.fromJson(Map<String, dynamic> json) {
+    String? ratingDateVal = json["ratingDate"];
+    DateTime? ratingDate;
+    if (ratingDateVal != null) {
+      ratingDate = DateTime(
+        int.parse(json["ratingDate"].split("-")[0]),
+        int.parse(json["ratingDate"].split("-")[1]),
+        int.parse(json["ratingDate"].split("-")[2])
+      );
+    } else {
+      ratingDate = null;
+    }
+    final Uri url = Uri.parse(json["url"]);
+    return Player(
+      json["pdgaNumber"], json["name"], json["rating"], json["ratingDifference"], ratingDate, url
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    final ratingDateVal = ratingDate;
+    String? ratingDateAsString;
+    if (ratingDateVal != null) {
+      int year = ratingDateVal.year;
+      int month = ratingDateVal.month;
+      int day = ratingDateVal.day;
+      ratingDateAsString = "$year-$month-$day";
+    }
+    Map<String, dynamic> jsonData = {
+      "pdgaNumber": pdgaNumber,
+      "name": name,
+      "rating": rating,
+      "ratingDifference": ratingDifference,
+      "ratingDate": ratingDateAsString,
+      "url": url.toString(),
+    };
+    print("json string = $jsonData");
+    return jsonData;
+  }
+
   String getDisplayDate() {
     final value = ratingDate;
     if (value == null) {
@@ -113,10 +166,10 @@ class Player {
     if (ratingVal == null || ratingDifferenceVal == null) {
       return Row(children: [Text(getDisplayRating())],);
     }
-    if (ratingDifferenceVal != null && ratingDifferenceVal < 0) {
+    if (ratingDifferenceVal < 0) {
       return Row(children: [Text(getDisplayRating()), const Icon(Icons.arrow_downward_rounded), Text(ratingDifferenceVal.toString())],);
     }
-    if (ratingDifferenceVal != null && ratingDifferenceVal > 0) {
+    if (ratingDifferenceVal > 0) {
       return Row(children: [Text(getDisplayRating()), const Icon(Icons.arrow_upward_rounded), Text(ratingDifferenceVal.toString())],);
     }
     throw Exception("Rating difference value cannot be zero");
@@ -199,6 +252,8 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    // Add a postframe callback that reads the players from the file if the file exists
+    WidgetsBinding.instance.addPostFrameCallback((_) {readPlayersFromFile();});
     controller = TextEditingController();
   }
 
@@ -206,6 +261,36 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     controller.dispose();
     super.dispose();
+  }
+
+  Future<void> readPlayersFromFile() async {
+    final file = await _localFile;
+    String? contents;
+    try {
+      contents = await file.readAsString();
+    } on PathNotFoundException {
+      return;
+    }
+
+    print(contents);
+    
+    var jsonResponse = jsonDecode(contents);
+
+    print(jsonResponse);
+
+    setState(() {
+      for (var p in jsonResponse) {
+        Player player = Player.fromJson(p);
+        players.add(player);
+      }
+    });
+  }
+
+  void writePlayersToFile() async {
+    final file = await _localFile;
+    file.writeAsStringSync(
+      json.encode(players.map((player) => player.toJson(),).toList())
+    );
   }
 
   void _addPlayer(int pdgaNumber) {
@@ -236,6 +321,7 @@ class _MyHomePageState extends State<MyHomePage> {
         Uri url = getPlayerUrl(pdgaNumber);
         Player player = Player(pdgaNumber, name, rating, ratingDifference, ratingDate, url);
         players.add(player);
+        writePlayersToFile();
       });
     });
   }
@@ -243,6 +329,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void _removePlayer(Player player) {
     setState(() {
       players.remove(player);
+      writePlayersToFile();
     });
   }
 
@@ -256,6 +343,7 @@ class _MyHomePageState extends State<MyHomePage> {
           player.rating = rating;
           player.ratingDifference = ratingDifference;
           player.ratingDate = ratingDate;
+          writePlayersToFile();
         });
       });
     }
