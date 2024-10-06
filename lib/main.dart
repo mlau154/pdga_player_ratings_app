@@ -251,6 +251,8 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Player> players = [];
   Color alternateRowColor = const Color.fromARGB(255, 213, 222, 219);
   Color gradientEndColor = const Color.fromARGB(255, 30, 154, 212);
+  Color notificationBoxColor = const Color.fromARGB(255, 55, 55, 55);
+  bool playersUpdated = false;
   bool sortTableAscending = true;
   int lastSortColumn = 0;
 
@@ -345,6 +347,7 @@ class _MyHomePageState extends State<MyHomePage> {
           player.ratingDifference = ratingDifference;
           player.ratingDate = ratingDate;
           writePlayersToFile();
+          notifyPlayersUpdated();
         });
       });
     }
@@ -395,6 +398,17 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       }
       lastSortColumn = column;
+    });
+  }
+
+  void notifyPlayersUpdated() {
+    setState(() {
+      playersUpdated = true;
+    });
+    Future.delayed(const Duration(seconds: 1), () {
+      setState(() {
+        playersUpdated = false;
+      });
     });
   }
 
@@ -515,6 +529,26 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: const Icon(Icons.refresh),
                 ),
               ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: AnimatedOpacity(
+                  opacity: playersUpdated ? 0.8 : 0.0,
+                  duration: const Duration(milliseconds: 500),
+                  child: Container(
+                    width: 200,
+                    height: 55,
+                    decoration: BoxDecoration(
+                      color: notificationBoxColor,
+                      border: Border.all(),
+                      borderRadius: BorderRadius.circular(20)
+                    ),
+                    child: const Center(child: Text("Updated Ratings", style: TextStyle(color: Colors.white, fontSize: 18),)),
+                  ),
+                ),
+              )
             ),
             Align(
               alignment: Alignment.bottomRight,
