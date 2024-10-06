@@ -7,10 +7,13 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:collection/collection.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import 'dart:convert';
 
 // TODO: prettify
+// TODO: add notification when player data was refreshed (transparent)
+// TODO: fix bug where interactive scroller does not allow scrolling when switching to landscape orientation after scrolling to the right
 // TODO: automatic update on PDGA ratings update (possibly with notification)
 // TODO: deploy to app store (see https://medium.com/@magnigeeks3/deploying-flutter-apps-to-app-stores-a-step-by-step-guide-00dab049bea0)
 
@@ -439,7 +442,7 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text(widget.title, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),),
       ),
       body: Center(
         // Center is a layout widget. It takes a single child and positions it
@@ -449,6 +452,9 @@ class _MyHomePageState extends State<MyHomePage> {
             InteractiveViewer(
               constrained: false,
               child: DataTable(
+                headingRowColor: WidgetStateColor.resolveWith((Set<WidgetState> states) {
+                    return Theme.of(context).colorScheme.onInverseSurface;
+                  }),
                 border: TableBorder.all(),
                 headingTextStyle: const TextStyle(fontWeight: FontWeight.bold),
                 columns: [
@@ -459,22 +465,29 @@ class _MyHomePageState extends State<MyHomePage> {
                   const DataColumn(label: Text("Actions"))
                 ],
                 rows: [
-                  for (final player in players)
-                    DataRow(
+                  for (var playerIdx = 0; playerIdx < players.length; playerIdx += 1)
+                    DataRow.byIndex(
+                      color: WidgetStateColor.resolveWith((Set<WidgetState> states) {
+                        if (playerIdx % 2 == 0) {
+                          return const Color.fromARGB(255, 213, 222, 219);
+                        }
+                        return Theme.of(context).colorScheme.onInverseSurface;
+                      }),
+                      index: playerIdx,
                       cells: [
-                        DataCell(Text(player.pdgaNumber.toString())),
+                        DataCell(Text(players[playerIdx].pdgaNumber.toString())),
                         DataCell(
                           InkWell(
-                            child: Text(player.name, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),),
-                            onTap: () => launchUrl(player.url),
+                            child: Text(players[playerIdx].name, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),),
+                            onTap: () => launchUrl(players[playerIdx].url),
                           )
                         ),
-                        DataCell(player.getRatingDisplayWidget()),
-                        DataCell(Text(player.getDisplayDate())),
+                        DataCell(players[playerIdx].getRatingDisplayWidget()),
+                        DataCell(Text(players[playerIdx].getDisplayDate())),
                         DataCell(
                           IconButton(
                             icon: const Icon(Icons.delete),
-                            onPressed: () => _removePlayer(player),
+                            onPressed: () => _removePlayer(players[playerIdx]),
                           )
                         )
                       ]
@@ -482,32 +495,27 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
               ),
             ),
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: FloatingActionButton(
-                  backgroundColor: const Color.fromARGB(99, 119, 90, 177),
-                  onPressed: _refreshPlayers,
-                  tooltip: 'Update Player Data',
-                  child: const Icon(Icons.refresh),
-                ),
-              ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        color: Theme.of(context).colorScheme.inversePrimary.withOpacity(0.5),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            IconButton(
+              onPressed: _refreshPlayers,
+              tooltip: "Update Player Data",
+              icon: const Icon(Icons.refresh)
             ),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: FloatingActionButton(
-                  onPressed: () async {
-                    final pdgaNumberToAdd = await _openAddPlayerDialog();
-                    if (pdgaNumberToAdd == null || pdgaNumberToAdd.isEmpty) return;
-                    _addPlayer(int.parse(pdgaNumberToAdd));                     
-                  },
-                  tooltip: 'Add Player',
-                  child: const Icon(Icons.add),
-                ),
-              )
+            IconButton(
+              onPressed: () async {
+                final pdgaNumberToAdd = await _openAddPlayerDialog();
+                if (pdgaNumberToAdd == null || pdgaNumberToAdd.isEmpty) return;
+                _addPlayer(int.parse(pdgaNumberToAdd));                     
+              },
+              tooltip: "Add player",
+              icon: const Icon(Icons.add)
             )
           ],
         ),
