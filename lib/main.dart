@@ -445,7 +445,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 colors: [
                   Theme.of(context).colorScheme.inversePrimary, // Start Color
                   gradientEndColor,// End Color
-                  // Colors.blue
                 ], // Customize your colors here
               ),
             ),
@@ -488,7 +487,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         DataCell(Text(players[playerIdx].pdgaNumber.toString())),
                         DataCell(
                           InkWell(
-                            child: Text(players[playerIdx].name, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),),
+                            child: Text(players[playerIdx].name, style: TextStyle(color: gradientEndColor, decoration: TextDecoration.underline),),
                             onTap: () => launchUrl(players[playerIdx].url),
                           )
                         ),
