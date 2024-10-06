@@ -249,6 +249,8 @@ String getPlayerName(String responseBody) {
 class _MyHomePageState extends State<MyHomePage> {
   late TextEditingController controller;
   List<Player> players = [];
+  Color alternateRowColor = const Color.fromARGB(255, 213, 222, 219);
+  Color gradientEndColor = const Color.fromARGB(255, 30, 154, 212);
   bool sortTableAscending = true;
   int lastSortColumn = 0;
 
@@ -274,12 +276,8 @@ class _MyHomePageState extends State<MyHomePage> {
     } on PathNotFoundException {
       return;
     }
-
-    print(contents);
     
     var jsonResponse = jsonDecode(contents);
-
-    print(jsonResponse);
 
     setState(() {
       for (var p in jsonResponse) {
@@ -439,7 +437,19 @@ class _MyHomePageState extends State<MyHomePage> {
         // TRY THIS: Try changing the color here to a specific color (to
         // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
         // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomLeft, // Start direction
+                end: Alignment.topRight, // End direction
+                colors: [
+                  Theme.of(context).colorScheme.inversePrimary, // Start Color
+                  gradientEndColor,// End Color
+                  // Colors.blue
+                ], // Customize your colors here
+              ),
+            ),
+        ),
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),),
@@ -469,7 +479,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     DataRow.byIndex(
                       color: WidgetStateColor.resolveWith((Set<WidgetState> states) {
                         if (playerIdx % 2 == 0) {
-                          return const Color.fromARGB(255, 213, 222, 219);
+                          return alternateRowColor;
                         }
                         return Theme.of(context).colorScheme.onInverseSurface;
                       }),
@@ -495,27 +505,33 @@ class _MyHomePageState extends State<MyHomePage> {
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomAppBar(
-        color: Theme.of(context).colorScheme.inversePrimary.withOpacity(0.5),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            IconButton(
-              onPressed: _refreshPlayers,
-              tooltip: "Update Player Data",
-              icon: const Icon(Icons.refresh)
+            Align(
+              alignment: Alignment.bottomLeft,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: FloatingActionButton(
+                  backgroundColor: Theme.of(context).colorScheme.inversePrimary.withOpacity(0.8),
+                  onPressed: _refreshPlayers,
+                  tooltip: 'Update Player Data',
+                  child: const Icon(Icons.refresh),
+                ),
+              ),
             ),
-            IconButton(
-              onPressed: () async {
-                final pdgaNumberToAdd = await _openAddPlayerDialog();
-                if (pdgaNumberToAdd == null || pdgaNumberToAdd.isEmpty) return;
-                _addPlayer(int.parse(pdgaNumberToAdd));                     
-              },
-              tooltip: "Add player",
-              icon: const Icon(Icons.add)
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: FloatingActionButton(
+                  backgroundColor: gradientEndColor.withOpacity(0.8),
+                  onPressed: () async {
+                    final pdgaNumberToAdd = await _openAddPlayerDialog();
+                    if (pdgaNumberToAdd == null || pdgaNumberToAdd.isEmpty) return;
+                    _addPlayer(int.parse(pdgaNumberToAdd));                     
+                  },
+                  tooltip: 'Add Player',
+                  child: const Icon(Icons.add),
+                ),
+              )
             )
           ],
         ),
