@@ -11,8 +11,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import 'dart:convert';
 
-// TODO: prettify
-// TODO: add notification when player data was refreshed (transparent)
 // TODO: fix bug where interactive scroller does not allow scrolling when switching to landscape orientation after scrolling to the right
 // TODO: automatic update on PDGA ratings update (possibly with notification)
 // TODO: deploy to app store (see https://medium.com/@magnigeeks3/deploying-flutter-apps-to-app-stores-a-step-by-step-guide-00dab049bea0)
@@ -22,11 +20,13 @@ void main() {
 }
 
 Future<String> get _localPath async {
+  // Gets the documents directory for the device
   final directory = await getApplicationDocumentsDirectory();
   return directory.path;
 }
 
 Future<File> get _localFile async {
+  // Gets the path to the JSON file where the player data gets stored
   final path = await _localPath;
   return File('$path/players.json');
 }
@@ -40,21 +40,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
@@ -65,15 +50,7 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+  // Home page for the app
 
   final String title;
 
@@ -97,6 +74,7 @@ const Map<String,int> monthStringToInt = {
 };
 
 class Player {
+  // Primary data class for PDGA players
   int pdgaNumber;
   String name;
   int? rating;
@@ -107,6 +85,7 @@ class Player {
   Player(this.pdgaNumber, this.name, this.rating, this.ratingDifference, this.ratingDate, this.url);
 
   factory Player.fromJson(Map<String, dynamic> json) {
+    // Decodes JSON data for a single player and creates a new Player object
     String? ratingDateVal = json["ratingDate"];
     DateTime? ratingDate;
     if (ratingDateVal != null) {
@@ -125,6 +104,7 @@ class Player {
   }
 
   Map<String, dynamic> toJson() {
+    // Encodes the Player as a single JSON mapping
     final ratingDateVal = ratingDate;
     String? ratingDateAsString;
     if (ratingDateVal != null) {
@@ -141,11 +121,11 @@ class Player {
       "ratingDate": ratingDateAsString,
       "url": url.toString(),
     };
-    print("json string = $jsonData");
     return jsonData;
   }
 
   String getDisplayDate() {
+    // Gets a display-friendly version of the most recent ratings update date for a player
     final value = ratingDate;
     if (value == null) {
       return "N/A";
@@ -155,6 +135,7 @@ class Player {
   }
 
   String getDisplayRating() {
+    // Gets a display-friendly version of a player's current rating
     final value = rating;
     if (value == null) {
       return "Expired";
@@ -164,6 +145,7 @@ class Player {
   }
 
   Row getRatingDisplayWidget() {
+    // Creates a text widget containing a player's rating and possibly an up/down arrow and rating difference
     final ratingVal = rating;
     final ratingDifferenceVal = ratingDifference;
     if (ratingVal == null || ratingDifferenceVal == null) {
@@ -180,6 +162,7 @@ class Player {
 }
 
 Uri getPlayerUrl(int pdgaNumber) {
+  // Gets the URI path to a player's PDGA page
   String pdgaNumberString = pdgaNumber.toString();
   String url = 'https://pdga.com/player/$pdgaNumberString';
   final Uri uri = Uri.parse(url);
@@ -187,6 +170,7 @@ Uri getPlayerUrl(int pdgaNumber) {
 }
 
 Future<String> getPlayerData(int pdgaNumber) async {
+  // Fetches a player's data from their PDGA page
   Uri uri = getPlayerUrl(pdgaNumber);
   final response = await http.get(uri);
   if (response.statusCode == 200) {
@@ -196,6 +180,8 @@ Future<String> getPlayerData(int pdgaNumber) async {
 }
 
 int? getPlayerRating(String responseBody) {
+  // Parses a player's rating from the raw fetched HTML. Returns null if
+  // there is no rating data or the player's membership has expired.
   if (responseBody.contains("PDGA membership has expired")) {
     return null;
   }
@@ -211,6 +197,8 @@ int? getPlayerRating(String responseBody) {
 }
 
 int? getPlayerRatingDifference(String responseBody) {
+  // Parses a player's rating difference from the raw fetched HTML. Returns
+  // null if the player's rating has not been updated recently.
   if (!responseBody.contains("rating-difference")) {
     return null;
   }
@@ -221,6 +209,8 @@ int? getPlayerRatingDifference(String responseBody) {
 }
 
 DateTime? getPlayerRatingDate(String responseBody) {
+  // Parses the date of the player's last ratings update from the raw
+  // fethced HTML. Returns null if the player's membership has expired.
   if (!responseBody.contains("rating-date")) {
     return null;
   }
@@ -239,6 +229,7 @@ DateTime? getPlayerRatingDate(String responseBody) {
 }
 
 String getPlayerName(String responseBody) {
+  // Parses the player's name from the raw fetched HTML.
   String split_1 = responseBody.split('page-title">')[1];
   String split_2 = split_1.split("</h1>")[0];
   String split_3 = split_2.split("#")[0];
@@ -247,7 +238,8 @@ String getPlayerName(String responseBody) {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late TextEditingController controller;
+  // Primary state for the app
+  late TextEditingController controller; // Used for pop-up dialog
   List<Player> players = [];
   Color alternateRowColor = const Color.fromARGB(255, 213, 222, 219);
   Color gradientEndColor = const Color.fromARGB(255, 30, 154, 212);
@@ -271,6 +263,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> readPlayersFromFile() async {
+    // Decodes the data from players.json and uses it to re-create
+    // the list of Player objects.
     final file = await _localFile;
     String? contents;
     try {
@@ -290,6 +284,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void writePlayersToFile() async {
+    // Encodes the data for all the Player objects into the players.json
+    // file
     final file = await _localFile;
     file.writeAsStringSync(
       json.encode(players.map((player) => player.toJson(),).toList())
@@ -297,13 +293,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _addPlayer(int pdgaNumber) {
+    // Adds a new Player object given the PDGA number input from the pop-up dialog
     getPlayerData(pdgaNumber).then((responseBody) {
       setState(() {
-        // This call to setState tells the Flutter framework that something has
-        // changed in this State, which causes it to rerun the build method below
-        // so that the display can reflect the updated values. If we changed
-        // _counter without calling setState(), then the build method would not be
-        // called again, and so nothing would appear to happen.
 
         // If the player data could not be fetched for this PDGA number, just return
         if (responseBody == "") {
@@ -330,6 +322,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _removePlayer(Player player) {
+    // Removes a player from the list (probably due to the user pressing the trash can icon)
     setState(() {
       players.remove(player);
       writePlayersToFile();
@@ -337,6 +330,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _refreshPlayers() {
+    // Refreshs the ratings, rating differences, and rating dates for all the currently loaded players
     for (final player in players) {
       getPlayerData(player.pdgaNumber).then((responseBody) {
         setState(() {
@@ -354,6 +348,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _sortPlayers(int column) {
+    // Sorts the players by the data in the given column either in descending order
+    // (if the last sort was in ascending order) and vice versa.
     setState(() {
       final nullFirst = DateTime(1);
       final nullLast = DateTime(99999);
@@ -402,6 +398,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void notifyPlayersUpdated() {
+    // Notifies the main widget that the refresh button was pressed and the players
+    // were updated so that a notification widget can be temporarily shown
     setState(() {
       playersUpdated = true;
     });
@@ -413,6 +411,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<String?> _openAddPlayerDialog() => showDialog<String>(
+    // Opens a numeric input dialog that, when accepted, creates a new Player
+    // object with the given PDGA number
     context: context, 
     builder: (context) => AlertDialog(
       title: const Text("PDGA Number"),
@@ -440,17 +440,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    // Main widget scaffold
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         flexibleSpace: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -463,17 +455,14 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
         ),
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Stack(
           children: [
             InteractiveViewer(
               constrained: false,
+              scaleEnabled: false,
               child: DataTable(
                 headingRowColor: WidgetStateColor.resolveWith((Set<WidgetState> states) {
                     return Theme.of(context).colorScheme.onInverseSurface;
