@@ -13,7 +13,6 @@ import 'dart:convert';
 
 // TODO: fix bug where interactive scroller does not allow scrolling when switching to landscape orientation after scrolling to the right
 // TODO: automatic update on PDGA ratings update (possibly with notification)
-// TODO: deploy to app store (see https://medium.com/@magnigeeks3/deploying-flutter-apps-to-app-stores-a-step-by-step-guide-00dab049bea0)
 
 void main() {
   runApp(const MyApp());
