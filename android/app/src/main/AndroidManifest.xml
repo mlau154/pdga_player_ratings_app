@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="pdga_player_ratings_app"
+        android:label="PDGA Player Ratings"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
