@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ffi';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -77,7 +78,7 @@ class Player {
   int pdgaNumber;
   String name;
   int? rating;
-  int? ratingDifference;
+  int ratingDifference;
   DateTime? ratingDate;
   Uri url;
 
@@ -97,8 +98,12 @@ class Player {
       ratingDate = null;
     }
     final Uri url = Uri.parse(json["url"]);
+    int ratingDiff = 0;
+    if (json["ratingDifference"] != null) {
+      ratingDiff = json["ratingDifference"];
+    }
     return Player(
-      json["pdgaNumber"], json["name"], json["rating"], json["ratingDifference"], ratingDate, url
+      json["pdgaNumber"], json["name"], json["rating"], ratingDiff, ratingDate, url
     );
   }
 
@@ -127,9 +132,20 @@ class Player {
     // Gets a display-friendly version of the most recent ratings update date for a player
     final value = ratingDate;
     if (value == null) {
-      return "N/A";
+      return "";
     } else {
       return DateFormat.yMd().format(value);
+    }
+  }
+
+  String getWrappedDisplayDate() {
+    // Gets a version of the display-friendly version of the most recent ratings update date for 
+    // the player with parentheses added unless the rating date is null
+    final wrappedDate = getDisplayDate();
+    if (wrappedDate.isNotEmpty) {
+      return '($wrappedDate)';
+    } else {
+      return '';
     }
   }
 
@@ -147,14 +163,33 @@ class Player {
     // Creates a text widget containing a player's rating and possibly an up/down arrow and rating difference
     final ratingVal = rating;
     final ratingDifferenceVal = ratingDifference;
-    if (ratingVal == null || ratingDifferenceVal == null) {
-      return Row(children: [Text(getDisplayRating())],);
+    if (ratingVal == null) {
+      return Row(
+        children: [Text(getDisplayRating())],
+      );
+    }
+    if (ratingDifferenceVal == 0) {
+      return Row(
+        children: [Text(getDisplayRating(), style: TextStyle(fontWeight: FontWeight.bold))],
+      );
     }
     if (ratingDifferenceVal < 0) {
-      return Row(children: [Text(getDisplayRating()), const Icon(Icons.arrow_downward_rounded), Text(ratingDifferenceVal.toString())],);
+      return Row(
+        children: [
+          Text(getDisplayRating(), style: TextStyle(fontWeight: FontWeight.bold)), 
+          const Icon(Icons.arrow_downward_rounded, color: Colors.red), 
+          Text(ratingDifferenceVal.toString(), style: TextStyle(color: Colors.red))
+        ],
+      );
     }
     if (ratingDifferenceVal > 0) {
-      return Row(children: [Text(getDisplayRating()), const Icon(Icons.arrow_upward_rounded), Text(ratingDifferenceVal.toString())],);
+      return Row(
+        children: [
+          Text(getDisplayRating(), style: TextStyle(fontWeight: FontWeight.bold)), 
+          const Icon(Icons.arrow_upward_rounded, color: Colors.green,), 
+          Text(ratingDifferenceVal.toString(), style: TextStyle(color: Colors.green))
+        ],
+      );
     }
     throw Exception("Rating difference value cannot be zero");
   }
@@ -195,11 +230,11 @@ int? getPlayerRating(String responseBody) {
   return int.parse(rating);
 }
 
-int? getPlayerRatingDifference(String responseBody) {
+int getPlayerRatingDifference(String responseBody) {
   // Parses a player's rating difference from the raw fetched HTML. Returns
   // null if the player's rating has not been updated recently.
   if (!responseBody.contains("rating-difference")) {
-    return null;
+    return 0;
   }
   String split_1 = responseBody.split("rating-difference")[1];
   String split_2 = split_1.split("</a>")[0];
@@ -240,10 +275,13 @@ class _MyHomePageState extends State<MyHomePage> {
   // Primary state for the app
   late TextEditingController controller; // Used for pop-up dialog
   List<Player> players = [];
+  List<int> sortColumns = [0, 1, 2, 3, 4];
+  List<String> sortHeaders = ["PDGA #", "Name", "Rating", "Date", "Diff"];
   Color alternateRowColor = const Color.fromARGB(255, 213, 222, 219);
   Color gradientEndColor = const Color.fromARGB(255, 30, 154, 212);
   Color notificationBoxColor = const Color.fromARGB(255, 55, 55, 55);
   bool playersUpdated = false;
+  bool playerRemoved = false;
   bool sortTableAscending = true;
   int lastSortColumn = 0;
 
@@ -320,10 +358,9 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void _removePlayer(Player player) {
-    // Removes a player from the list (probably due to the user pressing the trash can icon)
+  void _removePlayerAtIndex(int index) {
     setState(() {
-      players.remove(player);
+      players.removeAt(index);
       writePlayersToFile();
     });
   }
@@ -371,6 +408,8 @@ class _MyHomePageState extends State<MyHomePage> {
             });
           case 3:
             players.sortBy((e) => e.ratingDate ?? nullLast);
+          case 4:
+            players.sort((a, b) => a.ratingDifference.compareTo(b.ratingDifference));
         }
       } else {
         switch (column) {
@@ -390,6 +429,8 @@ class _MyHomePageState extends State<MyHomePage> {
           case 3:
             players.sortBy((e) => e.ratingDate ?? nullFirst);
             players = players.reversed.toList();
+          case 4:
+            players.sort((b, a) => a.ratingDifference.compareTo(b.ratingDifference));
         }
       }
       lastSortColumn = column;
@@ -405,6 +446,17 @@ class _MyHomePageState extends State<MyHomePage> {
     Future.delayed(const Duration(seconds: 1), () {
       setState(() {
         playersUpdated = false;
+      });
+    });
+  }
+
+  void notifyPlayerRemoved() {
+    setState(() {
+      playerRemoved = true;
+    });
+    Future.delayed(const Duration(seconds: 1), () {
+      setState(() {
+        playerRemoved = false;
       });
     });
   }
@@ -435,6 +487,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void submit() {
     Navigator.of(context).pop(controller.text);
+    controller.clear();
   }
 
   @override
@@ -457,54 +510,79 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),),
       ),
       body: Center(
-        child: Stack(
+        child: Stack( // Allows stacking of the refresh/add buttons on top of the list view
           children: [
-            InteractiveViewer(
-              constrained: false,
-              scaleEnabled: false,
-              child: DataTable(
-                headingRowColor: WidgetStateColor.resolveWith((Set<WidgetState> states) {
-                    return Theme.of(context).colorScheme.onInverseSurface;
-                  }),
-                border: TableBorder.all(),
-                headingTextStyle: const TextStyle(fontWeight: FontWeight.bold),
-                columns: [
-                  DataColumn(label: TextButton(child: const Text("PDGA #"), onPressed: () => _sortPlayers(0),)),
-                  DataColumn(label: TextButton(child: const Text("Name"), onPressed: () => _sortPlayers(1),)),
-                  DataColumn(label: TextButton(child: const Text("Rating"), onPressed: () => _sortPlayers(2),)),
-                  DataColumn(label: TextButton(child: const Text("Date"), onPressed: () => _sortPlayers(3),)),
-                  const DataColumn(label: Text("Actions"))
-                ],
-                rows: [
-                  for (var playerIdx = 0; playerIdx < players.length; playerIdx += 1)
-                    DataRow.byIndex(
-                      color: WidgetStateColor.resolveWith((Set<WidgetState> states) {
-                        if (playerIdx % 2 == 0) {
-                          return alternateRowColor;
-                        }
-                        return Theme.of(context).colorScheme.onInverseSurface;
-                      }),
-                      index: playerIdx,
-                      cells: [
-                        DataCell(Text(players[playerIdx].pdgaNumber.toString())),
-                        DataCell(
-                          InkWell(
-                            child: Text(players[playerIdx].name, style: TextStyle(color: gradientEndColor, decoration: TextDecoration.underline),),
-                            onTap: () => launchUrl(players[playerIdx].url),
-                          )
-                        ),
-                        DataCell(players[playerIdx].getRatingDisplayWidget()),
-                        DataCell(Text(players[playerIdx].getDisplayDate())),
-                        DataCell(
-                          IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () => _removePlayer(players[playerIdx]),
+            Column(
+              children: [
+                SizedBox(
+                  height: 35,
+                  child: ListView.builder( // Horizontal list-view containing the sorting buttons
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.all(4),
+                    shrinkWrap: true,
+                    itemCount: sortColumns.length + 1,
+                    itemBuilder: (BuildContext context, int index) {
+                      if (index == 0) {
+                        return OutlinedButton(
+                          onPressed: null,
+                          style: ButtonStyle(
+                            shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))),
+                          ),
+                          child: Icon(Icons.sort)
+                        );
+                      } else {
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 1.0, right: 1.0),
+                          child: OutlinedButton(
+                            onPressed: () => _sortPlayers(sortColumns[index - 1]),
+                            style: ButtonStyle(
+                              shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))),
+                            ),
+                            child: Text(sortHeaders[index - 1], style: GoogleFonts.montserrat()),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder( // Main vertical list view that stores the player cards
+                    padding: const EdgeInsets.all(4),
+                    itemCount: players.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      return Dismissible( // Used to allow deleting a player from the list by swiping horizontally
+                        key: Key(players[index].pdgaNumber.toString()),
+                        onDismissed: (direction) {
+                          _removePlayerAtIndex(index);
+                          notifyPlayerRemoved();
+                        },
+                        background: Container(color: Colors.red),
+                        child: Card(
+                          borderOnForeground: true,
+                          child: ListTile(
+                            title: Row(
+                              children: [
+                                Text('${players[index].name} ', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+                                InkWell(
+                                  child: Icon(Icons.link, color: Colors.blue,),
+                                  onTap: () => launchUrl(players[index].url),
+                                )
+                              ],
+                            ),
+                            subtitle: Row(
+                              children: [
+                                Text('PDGA #${players[index].pdgaNumber.toString()} // Rating: '),
+                                players[index].getRatingDisplayWidget(),
+                                Text(' ${players[index].getWrappedDisplayDate()}')
+                              ],
+                            ),
                           )
                         )
-                      ]
-                    )
-                ],
-              ),
+                      );
+                    }
+                  ),
+                ),
+              ],
             ),
             Align(
               alignment: Alignment.bottomLeft,
@@ -523,7 +601,7 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: AnimatedOpacity(
-                  opacity: playersUpdated ? 0.8 : 0.0,
+                  opacity: (playersUpdated || playerRemoved) ? 0.8 : 0.0,
                   duration: const Duration(milliseconds: 500),
                   child: Container(
                     width: 200,
@@ -533,7 +611,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       border: Border.all(),
                       borderRadius: BorderRadius.circular(20)
                     ),
-                    child: const Center(child: Text("Updated Ratings", style: TextStyle(color: Colors.white, fontSize: 18),)),
+                    child: Center(child: Text(playersUpdated ? "Updated Ratings": "Removed Player", style: TextStyle(color: Colors.white, fontSize: 18),)),
                   ),
                 ),
               )
