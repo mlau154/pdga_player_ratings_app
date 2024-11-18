@@ -169,28 +169,53 @@ class Player {
     }
     if (ratingDifferenceVal == 0) {
       return Row(
-        children: [Text(getDisplayRating(), style: TextStyle(fontWeight: FontWeight.bold))],
+        children: [Text(getDisplayRating(), style: GoogleFonts.montserrat(fontWeight: FontWeight.bold))],
       );
     }
     if (ratingDifferenceVal < 0) {
       return Row(
         children: [
-          Text(getDisplayRating(), style: TextStyle(fontWeight: FontWeight.bold)), 
+          Text(getDisplayRating(), style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)), 
           const Icon(Icons.arrow_downward_rounded, color: Colors.red), 
-          Text(ratingDifferenceVal.toString(), style: TextStyle(color: Colors.red))
+          Text(ratingDifferenceVal.toString(), style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, color: Colors.red))
         ],
       );
     }
     if (ratingDifferenceVal > 0) {
       return Row(
         children: [
-          Text(getDisplayRating(), style: TextStyle(fontWeight: FontWeight.bold)), 
+          Text(getDisplayRating(), style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)), 
           const Icon(Icons.arrow_upward_rounded, color: Colors.green,), 
-          Text(ratingDifferenceVal.toString(), style: TextStyle(color: Colors.green))
+          Text(ratingDifferenceVal.toString(), style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, color: Colors.green))
         ],
       );
     }
     throw Exception("Rating difference value cannot be zero");
+  }
+
+  Row getTitleRow() {
+    final ratingVal = rating;
+    if (ratingVal == null) {
+      return Row(children: [
+        Text(name, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold))
+      ]);
+    }
+    return Row(children: [
+      Text('$name: ', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+      getRatingDisplayWidget()
+    ],);
+  }
+
+  Row getSubtitleRow() {
+    final ratingVal = rating;
+    if (ratingVal == null) {
+      return Row(children: [
+        Text('PDGA #${pdgaNumber.toString()} // Rating Expired')
+      ],);
+    }
+    return Row(children: [
+      Text('PDGA #${pdgaNumber.toString()} // Updated: ${getDisplayDate()}'),
+    ],);
   }
 }
 
@@ -559,26 +584,15 @@ class _MyHomePageState extends State<MyHomePage> {
                           notifyPlayerRemoved();
                         },
                         background: Container(color: Colors.red),
-                        child: Card(
-                          borderOnForeground: true,
-                          child: ListTile(
-                            title: Row(
-                              children: [
-                                Text('${players[index].name} ', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
-                                InkWell(
-                                  child: Icon(Icons.link, color: Colors.blue,),
-                                  onTap: () => launchUrl(players[index].url),
-                                )
-                              ],
-                            ),
-                            subtitle: Row(
-                              children: [
-                                Text('PDGA #${players[index].pdgaNumber.toString()} // Rating: '),
-                                players[index].getRatingDisplayWidget(),
-                                Text(' ${players[index].getWrappedDisplayDate()}')
-                              ],
-                            ),
-                          )
+                        child: InkWell(
+                          child: Card(
+                            borderOnForeground: true,
+                            child: ListTile(
+                              title: players[index].getTitleRow(),
+                              subtitle: players[index].getSubtitleRow()
+                            )
+                          ),
+                          onTap: () => launchUrl(players[index].url),
                         )
                       );
                     }
