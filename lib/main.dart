@@ -41,6 +41,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
+        scaffoldBackgroundColor: Colors.white
       ),
       home: const MyHomePage(title: 'PDGA Player Ratings'),
     );
@@ -587,6 +588,12 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: InkWell(
                           child: Card(
                             borderOnForeground: true,
+                            color: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(color: Colors.grey.withOpacity(0.5), width: 1)
+                            ),
                             child: ListTile(
                               title: players[index].getTitleRow(),
                               subtitle: players[index].getSubtitleRow()
