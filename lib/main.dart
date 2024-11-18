@@ -37,7 +37,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'PDGA Player Ratings',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
@@ -506,7 +506,10 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
         ),
-        title: Text(widget.title, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),),
+        title: Container(
+          alignment: Alignment.center, 
+          child: Text(widget.title, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, color: Colors.white),)
+        ),
       ),
       body: Center(
         child: Stack( // Allows stacking of the refresh/add buttons on top of the list view
@@ -591,7 +594,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   backgroundColor: Theme.of(context).colorScheme.inversePrimary.withOpacity(0.8),
                   onPressed: _refreshPlayers,
                   tooltip: 'Update Player Data',
-                  child: const Icon(Icons.refresh),
+                  child: const Icon(Icons.refresh, color: Colors.white),
                 ),
               ),
             ),
@@ -627,7 +630,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     _addPlayer(int.parse(pdgaNumberToAdd));                     
                   },
                   tooltip: 'Add Player',
-                  child: const Icon(Icons.add),
+                  child: const Icon(Icons.add, color: Colors.white,),
                 ),
               )
             )
