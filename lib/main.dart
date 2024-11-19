@@ -556,9 +556,23 @@ class _MyHomePageState extends State<MyHomePage> {
                       WidgetStateProperty<Color> sortButtonTextColor = WidgetStateProperty.all(
                         Theme.of(context).primaryColor
                       );
+                      Row sortHeaderWidget;
+                      if (index == 0) {
+                        sortHeaderWidget = Row(children: [Icon(Icons.sort)],);
+                      } else {
+                        sortHeaderWidget = Row(
+                          children: [Text(sortHeaders[index - 1], style: GoogleFonts.montserrat())],
+                        );
+                      }
                       if (index > 0 && lastSortColumn + 1 == index) {
                         sortButtonColor = WidgetStateProperty.all(gradientEndColor);
                         sortButtonTextColor = WidgetStateProperty.all(Theme.of(context).secondaryHeaderColor);
+                        sortHeaderWidget = Row(
+                          children: [
+                            Text('${sortHeaders[index - 1]} ', style: GoogleFonts.montserrat()), 
+                            sortTableAscending ? Icon(Icons.arrow_upward_rounded) : Icon(Icons.arrow_downward_rounded)
+                          ],
+                        );
                       }
 
                       if (index == 0) {
@@ -567,7 +581,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           style: ButtonStyle(
                             shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))),
                           ),
-                          child: Icon(Icons.sort)
+                          child: sortHeaderWidget
                         );
                       } else {
                         return Padding(
@@ -581,7 +595,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               backgroundColor: sortButtonColor,
                               foregroundColor: sortButtonTextColor,
                             ),
-                            child: Text(sortHeaders[index - 1], style: GoogleFonts.montserrat()),
+                            child: sortHeaderWidget,
                           ),
                         );
                       }
