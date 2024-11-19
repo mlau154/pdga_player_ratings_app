@@ -491,7 +491,7 @@ class _MyHomePageState extends State<MyHomePage> {
     // object with the given PDGA number
     context: context, 
     builder: (context) => AlertDialog(
-      title: const Text("PDGA Number"),
+      title: Text("PDGA Number", style: GoogleFonts.montserrat()),
       content: TextField(
         autofocus: true,
         controller: controller,
@@ -513,6 +513,28 @@ class _MyHomePageState extends State<MyHomePage> {
   void submit() {
     Navigator.of(context).pop(controller.text);
     controller.clear();
+  }
+
+  Future<bool> confirmDeletePlayer (DismissDirection direction, String playerName) async {
+    return await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Confirm", style: GoogleFonts.montserrat()),
+          content: Text("Are you sure you wish to remove $playerName from the player list?"),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text("DELETE")
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text("CANCEL"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -609,6 +631,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     itemBuilder: (BuildContext context, int index) {
                       return Dismissible( // Used to allow deleting a player from the list by swiping horizontally
                         key: Key(players[index].pdgaNumber.toString()),
+                        confirmDismiss: (direction) => confirmDeletePlayer(direction, players[index].name),
                         onDismissed: (direction) {
                           _removePlayerAtIndex(index);
                           notifyPlayerRemoved();
