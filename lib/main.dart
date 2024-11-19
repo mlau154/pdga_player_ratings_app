@@ -585,21 +585,22 @@ class _MyHomePageState extends State<MyHomePage> {
                           notifyPlayerRemoved();
                         },
                         background: Container(color: Colors.red),
-                        child: InkWell(
-                          child: Card(
-                            borderOnForeground: true,
-                            color: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              side: BorderSide(color: Colors.grey.withOpacity(0.5), width: 1)
-                            ),
+                        child: Card(
+                          borderOnForeground: false,
+                          color: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: Colors.grey.withOpacity(0.5), width: 1)
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
                             child: ListTile(
                               title: players[index].getTitleRow(),
                               subtitle: players[index].getSubtitleRow()
-                            )
-                          ),
-                          onTap: () => launchUrl(players[index].url),
+                            ),
+                            onTap: () => launchUrl(players[index].url),
+                          )
                         )
                       );
                     }
