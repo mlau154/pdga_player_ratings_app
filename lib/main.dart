@@ -308,7 +308,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool playersUpdated = false;
   bool playerRemoved = false;
   bool sortTableAscending = true;
-  int lastSortColumn = 0;
+  int lastSortColumn = -1;
 
   @override
   void initState() {
@@ -550,6 +550,17 @@ class _MyHomePageState extends State<MyHomePage> {
                     shrinkWrap: true,
                     itemCount: sortColumns.length + 1,
                     itemBuilder: (BuildContext context, int index) {
+                      WidgetStateProperty<Color> sortButtonColor = WidgetStateProperty.all(
+                        Colors.white
+                      );
+                      WidgetStateProperty<Color> sortButtonTextColor = WidgetStateProperty.all(
+                        Theme.of(context).primaryColor
+                      );
+                      if (index > 0 && lastSortColumn + 1 == index) {
+                        sortButtonColor = WidgetStateProperty.all(gradientEndColor);
+                        sortButtonTextColor = WidgetStateProperty.all(Theme.of(context).secondaryHeaderColor);
+                      }
+
                       if (index == 0) {
                         return OutlinedButton(
                           onPressed: null,
@@ -564,7 +575,11 @@ class _MyHomePageState extends State<MyHomePage> {
                           child: OutlinedButton(
                             onPressed: () => _sortPlayers(sortColumns[index - 1]),
                             style: ButtonStyle(
-                              shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))),
+                              shape: WidgetStateProperty.all(
+                                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))
+                              ),
+                              backgroundColor: sortButtonColor,
+                              foregroundColor: sortButtonTextColor,
                             ),
                             child: Text(sortHeaders[index - 1], style: GoogleFonts.montserrat()),
                           ),
