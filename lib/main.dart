@@ -613,7 +613,18 @@ class _MyHomePageState extends State<MyHomePage> {
                           _removePlayerAtIndex(index);
                           notifyPlayerRemoved();
                         },
-                        background: Container(color: Colors.red),
+                        background: Container(
+                          color: Colors.red,
+                          padding: EdgeInsets.symmetric(horizontal: 12.0),
+                          alignment: Alignment.centerLeft,
+                          child: Icon(Icons.delete),
+                        ),
+                        secondaryBackground: Container(
+                          color: Colors.red, 
+                          padding: EdgeInsets.symmetric(horizontal: 12.0),
+                          alignment: Alignment.centerRight,
+                          child: Icon(Icons.delete)
+                        ),
                         child: Card(
                           borderOnForeground: false,
                           color: Colors.white,
