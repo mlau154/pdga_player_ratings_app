@@ -80,8 +80,9 @@ class Player {
   int ratingDifference;
   DateTime? ratingDate;
   Uri url;
+  List<String> groups;
 
-  Player(this.pdgaNumber, this.name, this.rating, this.ratingDifference, this.ratingDate, this.url);
+  Player(this.pdgaNumber, this.name, this.rating, this.ratingDifference, this.ratingDate, this.url, this.groups);
 
   factory Player.fromJson(Map<String, dynamic> json) {
     // Decodes JSON data for a single player and creates a new Player object
@@ -101,8 +102,12 @@ class Player {
     if (json["ratingDifference"] != null) {
       ratingDiff = json["ratingDifference"];
     }
+    List<String> groups = [];
+    if (json.containsKey("groups")) {
+      groups = (json["groups"] as List).map((item) => item as String).toList();
+    }
     return Player(
-      json["pdgaNumber"], json["name"], json["rating"], ratingDiff, ratingDate, url
+      json["pdgaNumber"], json["name"], json["rating"], ratingDiff, ratingDate, url, groups
     );
   }
 
@@ -123,6 +128,7 @@ class Player {
       "ratingDifference": ratingDifference,
       "ratingDate": ratingDateAsString,
       "url": url.toString(),
+      "groups": groups
     };
     return jsonData;
   }
@@ -375,7 +381,8 @@ class _MyHomePageState extends State<MyHomePage> {
         String name = getPlayerName(responseBody);
         DateTime? ratingDate = getPlayerRatingDate(responseBody);
         Uri url = getPlayerUrl(pdgaNumber);
-        Player player = Player(pdgaNumber, name, rating, ratingDifference, ratingDate, url);
+        List<String> groups = [];  // This player is not yet a member of any groups since it was just added by the user
+        Player player = Player(pdgaNumber, name, rating, ratingDifference, ratingDate, url, groups);
         players.add(player);
         writePlayersToFile();
       });
@@ -628,6 +635,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     padding: const EdgeInsets.all(4),
                     itemCount: players.length,
                     itemBuilder: (BuildContext context, int index) {
+                      // if (players[index].pdgaNumber == 102572) {
+                      //   return Container();
+                      // }  // If player is not in visible list, use this container to hide the card!
                       return Dismissible( // Used to allow deleting a player from the list by swiping horizontally
                         key: Key(players[index].pdgaNumber.toString()),
                         confirmDismiss: (direction) => confirmDeletePlayer(direction, players[index].name),
