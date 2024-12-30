@@ -11,7 +11,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import 'dart:convert';
 
-// TODO: fix bug where interactive scroller does not allow scrolling when switching to landscape orientation after scrolling to the right
 // TODO: automatic update on PDGA ratings update (possibly with notification)
 
 void main() {
