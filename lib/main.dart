@@ -11,7 +11,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import 'dart:convert';
 
-// TODO: fix bug where interactive scroller does not allow scrolling when switching to landscape orientation after scrolling to the right
 // TODO: automatic update on PDGA ratings update (possibly with notification)
 
 void main() {
@@ -81,8 +80,9 @@ class Player {
   int ratingDifference;
   DateTime? ratingDate;
   Uri url;
+  List<String> groups;
 
-  Player(this.pdgaNumber, this.name, this.rating, this.ratingDifference, this.ratingDate, this.url);
+  Player(this.pdgaNumber, this.name, this.rating, this.ratingDifference, this.ratingDate, this.url, this.groups);
 
   factory Player.fromJson(Map<String, dynamic> json) {
     // Decodes JSON data for a single player and creates a new Player object
@@ -102,8 +102,12 @@ class Player {
     if (json["ratingDifference"] != null) {
       ratingDiff = json["ratingDifference"];
     }
+    List<String> groups = ["All"];
+    if (json.containsKey("groups")) {
+      groups = (json["groups"] as List).map((item) => item as String).toList();
+    }
     return Player(
-      json["pdgaNumber"], json["name"], json["rating"], ratingDiff, ratingDate, url
+      json["pdgaNumber"], json["name"], json["rating"], ratingDiff, ratingDate, url, groups
     );
   }
 
@@ -124,6 +128,7 @@ class Player {
       "ratingDifference": ratingDifference,
       "ratingDate": ratingDateAsString,
       "url": url.toString(),
+      "groups": groups
     };
     return jsonData;
   }
@@ -300,6 +305,8 @@ class _MyHomePageState extends State<MyHomePage> {
   // Primary state for the app
   late TextEditingController controller; // Used for pop-up dialog
   List<Player> players = [];
+  Map<String, List<Player>> groups = {"All": []};
+  String currentGroup = "All";
   List<int> sortColumns = [0, 1, 2, 3, 4];
   List<String> sortHeaders = ["PDGA #", "Name", "Rating", "Date", "Diff"];
   Color alternateRowColor = const Color.fromARGB(255, 213, 222, 219);
@@ -341,6 +348,16 @@ class _MyHomePageState extends State<MyHomePage> {
       for (var p in jsonResponse) {
         Player player = Player.fromJson(p);
         players.add(player);
+  
+        // Append the player to each collection, creating the collection for 
+        // each key if necessary
+        for (var group in player.groups) {
+          if (groups.containsKey(group)) {
+            groups[group]?.add(player);
+          } else {
+            groups[group] = [player];
+          }
+        }
       }
     });
   }
@@ -376,7 +393,8 @@ class _MyHomePageState extends State<MyHomePage> {
         String name = getPlayerName(responseBody);
         DateTime? ratingDate = getPlayerRatingDate(responseBody);
         Uri url = getPlayerUrl(pdgaNumber);
-        Player player = Player(pdgaNumber, name, rating, ratingDifference, ratingDate, url);
+        List<String> groups = ["All"];
+        Player player = Player(pdgaNumber, name, rating, ratingDifference, ratingDate, url, groups);
         players.add(player);
         writePlayersToFile();
       });
@@ -385,7 +403,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _removePlayerAtIndex(int index) {
     setState(() {
+      // First, remove the player from all the groups
+      for (var group in players[index].groups) {
+        groups[group]?.remove(players[index]);
+      }
+      // Now, remove the player from the list of players
       players.removeAt(index);
+      // Write the updated list of players to file
       writePlayersToFile();
     });
   }
@@ -401,6 +425,7 @@ class _MyHomePageState extends State<MyHomePage> {
           player.rating = rating;
           player.ratingDifference = ratingDifference;
           player.ratingDate = ratingDate;
+          // Do not need to update groups here since this is not affected by a refresh
           writePlayersToFile();
           notifyPlayersUpdated();
         });
@@ -461,6 +486,107 @@ class _MyHomePageState extends State<MyHomePage> {
       lastSortColumn = column;
     });
   }
+
+  Future<String?> _showGroupsDialog() => showDialog<String>(
+    // Opens a numeric input dialog that, when accepted, creates a new Player
+    // object with the given PDGA number
+    context: context, 
+    builder: (context) => AlertDialog(
+      title: Text("Groups", style: GoogleFonts.montserrat()),
+      content: Column(
+        children: [
+          SizedBox(
+            width: 200,
+            height: 200,
+            child: ListView.builder( // Horizontal list-view containing the sorting buttons
+              // padding: const EdgeInsets.all(4),
+              itemCount: groups.keys.length,
+              itemBuilder: (BuildContext context, int index) {
+                String group = (groups.keys.toList()..sort())[index];
+                return Card(
+                  key: Key(group),
+                  child: Row(children: [
+                    Text(group),
+                    currentGroup == group ? Icon(Icons.visibility) : Icon(Icons.visibility_off),
+                    group == "All" ? Text("") : IconButton(onPressed: () {setState(() {
+                      groups.remove(group);
+                      currentGroup = "All";
+                    });}, icon: Icon(Icons.delete),)
+                  ],),
+                );
+              }
+            ),
+          ),
+          TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: "Enter a new collection name",
+              suffixIcon: IconButton(
+                onPressed: () {
+                  setState(() {
+                    groups[controller.text] = [];
+                  });
+                }, 
+                icon: Icon(Icons.add)
+              )
+            ),
+          )
+        ],
+      ), 
+      actions: [
+        TextButton(
+          onPressed: submit, 
+          child: const Text("OK")
+        )
+      ]
+    )
+  );
+
+  List<Row> _getPlayerGroupWidgetList(Player player) {
+    List<Row> rows = [];
+
+    for (var group in groups.keys) {
+      bool checkboxVal = false;
+      if (player.groups.contains(group)) {
+        checkboxVal = true;
+      }
+      Checkbox checkbox = Checkbox(
+        value: checkboxVal, 
+        onChanged: (bool? newValue) {
+          setState(() {
+            if (newValue != null && newValue) {
+              groups[group]?.add(player);
+            } else if (newValue != null && !newValue) {
+              groups[group]?.remove(player);
+            }
+          });
+        },
+      );
+      Row row = Row(
+        children: [
+          Expanded(child: Text(group)),
+          checkbox
+        ],
+      );
+      rows.add(row);
+    }
+
+    return rows;
+  }
+
+  Future _showPlayerGroupsDialog(Player player) => showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text("Player Groups", style: GoogleFonts.montserrat()),
+      content: Column(children: _getPlayerGroupWidgetList(player),),
+      actions: [
+        TextButton(
+          onPressed: submit, 
+          child: const Text("OK")
+        )
+      ]
+    ) 
+  );
 
   void notifyPlayersUpdated() {
     // Notifies the main widget that the refresh button was pressed and the players
@@ -599,7 +725,14 @@ class _MyHomePageState extends State<MyHomePage> {
 
                       if (index == 0) {
                         return OutlinedButton(
-                          onPressed: null,
+                          onPressed: () async {
+                            final collectionToDisplay = await _showGroupsDialog();
+                            print(collectionToDisplay);
+                            if (collectionToDisplay == null || collectionToDisplay.isEmpty) return;
+                            setState(() {
+                              currentGroup = collectionToDisplay;
+                            });                 
+                          },
                           style: ButtonStyle(
                             shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))),
                           ),
@@ -627,11 +760,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 Expanded(
                   child: ListView.builder( // Main vertical list view that stores the player cards
                     padding: const EdgeInsets.all(4),
-                    itemCount: players.length,
+                    itemCount: groups[currentGroup]?.length,
                     itemBuilder: (BuildContext context, int index) {
+                      List<Player>? group = groups[currentGroup];
+                      if (group == null) {
+                        throw Exception("Could not find current group in list");
+                      }
+                      Player player = group[index];
                       return Dismissible( // Used to allow deleting a player from the list by swiping horizontally
-                        key: Key(players[index].pdgaNumber.toString()),
-                        confirmDismiss: (direction) => confirmDeletePlayer(direction, players[index].name),
+                        key: Key(player.pdgaNumber.toString()),
+                        confirmDismiss: (direction) => confirmDeletePlayer(direction, player.name),
                         onDismissed: (direction) {
                           _removePlayerAtIndex(index);
                           notifyPlayerRemoved();
@@ -659,10 +797,11 @@ class _MyHomePageState extends State<MyHomePage> {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(10),
                             child: ListTile(
-                              title: players[index].getTitleRow(),
-                              subtitle: players[index].getSubtitleRow()
+                              title: player.getTitleRow(),
+                              subtitle: player.getSubtitleRow()
                             ),
-                            onTap: () => launchUrl(players[index].url),
+                            onTap: () => launchUrl(player.url),
+                            onLongPress: () => _showPlayerGroupsDialog(player),
                           )
                         )
                       );
